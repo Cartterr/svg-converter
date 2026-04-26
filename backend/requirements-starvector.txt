@@ -1,0 +1,22 @@
+--extra-index-url https://download.pytorch.org/whl/cu121
+torch==2.5.1+cu121
+torchvision==0.20.1+cu121
+numpy<2.0.0
+transformers==4.49.0
+tokenizers==0.21.1
+sentencepiece==0.2.0
+accelerate
+safetensors
+huggingface-hub
+pillow
+svgpathtools==1.6.1
+cairosvg
+beautifulsoup4
+webcolors
+tqdm
+lxml
+scikit-image
+scipy==1.11.1
+omegaconf
+fairscale
+matplotlib

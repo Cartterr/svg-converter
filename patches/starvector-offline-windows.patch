@@ -1,0 +1,37 @@
+*** Begin Patch
+*** Update File: third_party\star-vector\starvector\model\llm\starcoder.py
+@@
+ from transformers import (
+-    AutoConfig,
+     AutoModelForCausalLM,
+     AutoTokenizer,
++    GPTBigCodeConfig,
++    GPTBigCodeForCausalLM,
+     utils
+     )
+@@
+-        self.init_tokenizer(config.starcoder_model_name)
++        tokenizer_source = getattr(config, "name_or_path", None) or getattr(config, "_name_or_path", None) or config.starcoder_model_name
++        self.init_tokenizer(tokenizer_source)
+
+         self.max_length = config.max_length
+-        model_config = AutoConfig.from_pretrained(config.starcoder_model_name, trust_remote_code=True)
++        model_config = GPTBigCodeConfig(
++            vocab_size=config.vocab_size,
++            n_positions=config.max_position_embeddings,
++            n_embd=config.hidden_size,
++            n_layer=config.num_hidden_layers,
++            n_head=config.num_attention_heads,
++            multi_query=config.multi_query,
++            use_cache=config.use_cache,
++        )
+         kwargs = {}
+         kwargs['trust_remote_code'] = True
+         kwargs['torch_dtype'] = config.torch_dtype
+@@
+-        # model = GPTBigCodeForCausalLM(config=model_config)
+-        model = AutoModelForCausalLM.from_pretrained(config.starcoder_model_name, config=model_config, **kwargs)
++        model = GPTBigCodeForCausalLM(config=model_config)
+         model.resize_token_embeddings(len(self.tokenizer))
+         self.transformer = model
+*** End Patch
