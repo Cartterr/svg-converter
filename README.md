@@ -36,6 +36,7 @@ Sources:
 
 ```powershell
 npm install
+npm run api
 npm run dev
 ```
 
@@ -43,6 +44,12 @@ Local URL:
 
 ```text
 http://127.0.0.1:5173/
+```
+
+Local API:
+
+```text
+http://127.0.0.1:5174/api/health
 ```
 
 Quality checks:
@@ -74,6 +81,13 @@ Convert an image:
 ```powershell
 .\.venv\Scripts\python.exe backend\starvector_convert.py input.png outputs\input.svg
 ```
+
+Or use the frontend upload flow:
+
+1. Start the API with `npm run api`.
+2. Start the frontend with `npm run dev`.
+3. Open `http://127.0.0.1:5173/`.
+4. Click `Browse`, choose a PNG/JPG/WEBP, then click `Convert to SVG`.
 
 Recreate the backend on a fresh Windows checkout:
 

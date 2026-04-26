@@ -11,6 +11,6 @@ if __name__ == "__main__":
         output_path=Path("outputs/starvector-smoke/sample-0.svg"),
         model_path=Path("models/starvector-1b-im2svg"),
         max_length=8192,
-        temperature=0.7,
-        num_beams=1,
+        temperature=1.0,
+        num_beams=2,
     )

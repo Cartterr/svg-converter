@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import './App.css'
 
 type Tier = 'S' | 'A' | 'B' | 'C' | 'D'
@@ -90,8 +91,71 @@ const modelPicks: ModelPick[] = [
 ]
 
 const tiers: Tier[] = ['S', 'A', 'B', 'C', 'D']
+const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:5174'
 
 function App() {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [svgCode, setSvgCode] = useState('')
+  const [status, setStatus] = useState('Ready for a PNG, JPG, or WEBP image.')
+  const [isConverting, setIsConverting] = useState(false)
+  const [error, setError] = useState('')
+
+  const inputPreviewUrl = useMemo(() => {
+    if (!selectedFile) {
+      return ''
+    }
+
+    return URL.createObjectURL(selectedFile)
+  }, [selectedFile])
+
+  async function convertSelectedImage() {
+    if (!selectedFile || isConverting) {
+      return
+    }
+
+    setError('')
+    setSvgCode('')
+    setStatus('Uploading image and starting StarVector 1B. This can take about a minute.')
+    setIsConverting(true)
+
+    const body = new FormData()
+    body.append('image', selectedFile)
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/convert`, {
+        method: 'POST',
+        body,
+      })
+      const result = await response.json()
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || 'Conversion failed.')
+      }
+
+      setSvgCode(result.svg)
+      setStatus(`Converted ${result.fileName} with local StarVector 1B.`)
+    } catch (conversionError) {
+      setError(conversionError instanceof Error ? conversionError.message : 'Conversion failed.')
+      setStatus('Conversion failed.')
+    } finally {
+      setIsConverting(false)
+    }
+  }
+
+  function downloadSvg() {
+    if (!svgCode) {
+      return
+    }
+
+    const blob = new Blob([svgCode], { type: 'image/svg+xml' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `${selectedFile?.name.replace(/\.[^.]+$/, '') || 'converted'}.svg`
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <main className="workspace">
       <section className="intro">
@@ -117,15 +181,76 @@ function App() {
       <section className="converter-panel" aria-label="Converter workspace">
         <div className="drop-zone">
           <span>PNG / JPG input</span>
-          <strong>Upload wiring comes next</strong>
+          <strong>{selectedFile ? selectedFile.name : 'Choose an image'}</strong>
+          <label className="file-button">
+            Browse
+            <input
+              data-testid="image-input"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0] ?? null
+                setSelectedFile(file)
+                setSvgCode('')
+                setError('')
+                setStatus(file ? 'Image selected. Start conversion when ready.' : 'Ready for a PNG, JPG, or WEBP image.')
+              }}
+            />
+          </label>
+          {inputPreviewUrl ? (
+            <img className="input-preview" src={inputPreviewUrl} alt="Selected input preview" />
+          ) : null}
         </div>
         <div className="pipeline">
           <span>Backend route</span>
           <strong>local-starvector-1b</strong>
+          <button
+            className="convert-button"
+            data-testid="convert-button"
+            disabled={!selectedFile || isConverting}
+            type="button"
+            onClick={convertSelectedImage}
+          >
+            {isConverting ? 'Converting...' : 'Convert to SVG'}
+          </button>
+          <p className="status-text">{status}</p>
+          {error ? <p className="error-text">{error}</p> : null}
         </div>
         <div className="output-preview">
           <span>SVG output</span>
-          <strong>Preview + code editor</strong>
+          <strong>{svgCode ? 'Preview ready' : 'Waiting for conversion'}</strong>
+          <button
+            className="download-button"
+            disabled={!svgCode}
+            type="button"
+            onClick={downloadSvg}
+          >
+            Download SVG
+          </button>
+        </div>
+      </section>
+
+      <section className="result-panel" aria-label="Conversion result">
+        <div className="svg-preview">
+          <span>Preview</span>
+          {svgCode ? (
+            <iframe
+              title="Generated SVG preview"
+              sandbox=""
+              srcDoc={svgCode}
+            />
+          ) : (
+            <div className="empty-output">Converted SVG will render here.</div>
+          )}
+        </div>
+        <div className="svg-code">
+          <span>SVG code</span>
+          <textarea
+            data-testid="svg-code"
+            readOnly
+            value={svgCode}
+            placeholder="<svg> output appears here after conversion"
+          />
         </div>
       </section>
 

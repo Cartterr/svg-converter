@@ -15,9 +15,10 @@ def extract_svg(raw_svg: str) -> str:
 
     svg = raw_svg[start:]
     end = svg.find("</svg>")
-    if end != -1:
-        return svg[: end + len("</svg>")]
-    return svg
+    if end == -1:
+        raise ValueError("Model output did not include a closing </svg> tag. Try again or use a simpler icon-like input.")
+
+    return svg[: end + len("</svg>")]
 
 
 def convert_image(
@@ -72,8 +73,8 @@ def main() -> None:
         help="Local StarVector model directory",
     )
     parser.add_argument("--max-length", type=int, default=8192)
-    parser.add_argument("--temperature", type=float, default=0.7)
-    parser.add_argument("--num-beams", type=int, default=1)
+    parser.add_argument("--temperature", type=float, default=1.0)
+    parser.add_argument("--num-beams", type=int, default=2)
     args = parser.parse_args()
 
     convert_image(
