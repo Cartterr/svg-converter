@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import './App.css'
 
 type Tier = 'S' | 'A' | 'B' | 'C' | 'D'
+type Engine = 'starvector-1b' | 'local-trace'
 
 type ModelPick = {
   tier: Tier
@@ -92,9 +93,22 @@ const modelPicks: ModelPick[] = [
 
 const tiers: Tier[] = ['S', 'A', 'B', 'C', 'D']
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:5174'
+const engines: Array<{ id: Engine; label: string; detail: string }> = [
+  {
+    id: 'starvector-1b',
+    label: 'AI',
+    detail: 'StarVector 1B',
+  },
+  {
+    id: 'local-trace',
+    label: 'Trace',
+    detail: 'Local silhouette',
+  },
+]
 
 function App() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [engine, setEngine] = useState<Engine>('local-trace')
   const [svgCode, setSvgCode] = useState('')
   const [status, setStatus] = useState('Ready for a PNG, JPG, or WEBP image.')
   const [isConverting, setIsConverting] = useState(false)
@@ -120,6 +134,7 @@ function App() {
 
     const body = new FormData()
     body.append('image', selectedFile)
+    body.append('engine', engine)
 
     try {
       const response = await fetch(`${apiBaseUrl}/api/convert`, {
@@ -133,7 +148,7 @@ function App() {
       }
 
       setSvgCode(result.svg)
-      setStatus(`Converted ${result.fileName} with local StarVector 1B.`)
+      setStatus(`Converted ${result.fileName} with ${engineLabel(engine)}.`)
     } catch (conversionError) {
       setError(conversionError instanceof Error ? conversionError.message : 'Conversion failed.')
       setStatus('Conversion failed.')
@@ -154,6 +169,10 @@ function App() {
     anchor.download = `${selectedFile?.name.replace(/\.[^.]+$/, '') || 'converted'}.svg`
     anchor.click()
     URL.revokeObjectURL(url)
+  }
+
+  function engineLabel(engineId: Engine) {
+    return engines.find((item) => item.id === engineId)?.detail ?? engineId
   }
 
   return (
@@ -202,8 +221,26 @@ function App() {
           ) : null}
         </div>
         <div className="pipeline">
-          <span>Backend route</span>
-          <strong>local-starvector-1b</strong>
+          <span>Conversion engine</span>
+          <strong>{engineLabel(engine)}</strong>
+          <div className="engine-toggle" role="group" aria-label="Conversion engine">
+            {engines.map((item) => (
+              <button
+                className={item.id === engine ? 'engine-option active' : 'engine-option'}
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setEngine(item.id)
+                  setSvgCode('')
+                  setError('')
+                  setStatus(`${item.detail} selected.`)
+                }}
+              >
+                <span>{item.label}</span>
+                <small>{item.detail}</small>
+              </button>
+            ))}
+          </div>
           <button
             className="convert-button"
             data-testid="convert-button"

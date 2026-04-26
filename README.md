@@ -7,6 +7,7 @@ A local-first workspace for testing image-to-SVG conversion backends. The UI is 
 - Frontend: React + TypeScript + Vite.
 - Local GPU target: NVIDIA RTX 4070, 12 GB VRAM.
 - First AI backend: `starvector/starvector-1b-im2svg`.
+- Local software backend: Inkscape-style silhouette tracing through `backend/local_trace.py`.
 - Fallback backend planned: `vtracer`.
 - Heavy model files, Python environments, source clones, outputs, and caches are intentionally ignored and not committed.
 
@@ -15,6 +16,7 @@ A local-first workspace for testing image-to-SVG conversion backends. The UI is 
 | Tier | Model | Size | VRAM | Use |
 | --- | --- | --- | --- | --- |
 | S | StarVector 1B im2svg | 5.15 GB repo, 1B params | Smoke-tested under 3 GB reserved on RTX 4070 | First local AI backend. |
+| S | Local silhouette trace | No model weights | CPU | Fast software trace for simple black/solid logos. |
 | A | OmniSVG 1.1 4B | 7.6 GB weights | Official: 16 GB | Strong candidate with quantization/offload. |
 | B | StarVector 8B im2svg | 15 GB repo, 8B params | Likely above 12 GB fp16 | Quality reference, not default local path. |
 | B | VTracer | Small binary/library | CPU | Deterministic baseline and fallback. |
@@ -87,7 +89,18 @@ Or use the frontend upload flow:
 1. Start the API with `npm run api`.
 2. Start the frontend with `npm run dev`.
 3. Open `http://127.0.0.1:5173/`.
-4. Click `Browse`, choose a PNG/JPG/WEBP, then click `Convert to SVG`.
+4. Choose `Trace` for simple silhouette logos or `AI` for StarVector.
+5. Click `Browse`, choose a PNG/JPG/WEBP, then click `Convert to SVG`.
+
+## Local Trace Backend
+
+The `Trace` mode is an Inkscape-style bitmap tracing path for simple logos and silhouettes. It runs locally in Python, thresholds the image, extracts contours, simplifies paths, and returns a filled SVG path.
+
+```powershell
+.\.venv\Scripts\python.exe backend\local_trace.py input.png outputs\input.svg
+```
+
+Use this mode first for clean black logos, transparent-background marks, and simple silhouettes. It is much faster than the AI path and does not use model weights.
 
 Recreate the backend on a fresh Windows checkout:
 

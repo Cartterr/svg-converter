@@ -13,6 +13,7 @@ const uploadDir = path.join(root, 'outputs', 'uploads')
 const convertDir = path.join(root, 'outputs', 'web')
 const pythonPath = path.join(root, '.venv', 'Scripts', 'python.exe')
 const converterPath = path.join(root, 'backend', 'starvector_convert.py')
+const localTracePath = path.join(root, 'backend', 'local_trace.py')
 
 await mkdir(uploadDir, { recursive: true })
 await mkdir(convertDir, { recursive: true })
@@ -38,11 +39,16 @@ app.use(cors({ origin: ['http://127.0.0.1:5173', 'http://localhost:5173'] }))
 app.use(express.json())
 
 app.get('/api/health', (_request, response) => {
-  response.json({ ok: true, backend: 'starvector-1b', modelPath: 'models/starvector-1b-im2svg' })
+  response.json({
+    ok: true,
+    backends: ['starvector-1b', 'local-trace'],
+    modelPath: 'models/starvector-1b-im2svg',
+  })
 })
 
 app.post('/api/convert', upload.single('image'), async (request, response) => {
   const file = request.file
+  const engine = typeof request.body.engine === 'string' ? request.body.engine : 'starvector-1b'
   if (!file) {
     response.status(400).json({ error: 'Missing image upload.' })
     return
@@ -57,22 +63,13 @@ app.post('/api/convert', upload.single('image'), async (request, response) => {
     await rm(inputPath, { force: true })
     await import('node:fs/promises').then(({ rename }) => rename(file.path, inputPath))
 
-    const result = await runPython([
-      converterPath,
-      inputPath,
-      svgPath,
-      '--max-length',
-      '8192',
-      '--num-beams',
-      '2',
-      '--temperature',
-      '1',
-    ])
+    const result = await runPython(getConverterArgs(engine, inputPath, svgPath))
 
     const svg = await readFile(svgPath, 'utf8')
     response.json({
       ok: true,
       id,
+      engine,
       fileName: file.originalname,
       svg,
       log: result.stdout,
@@ -86,6 +83,36 @@ app.post('/api/convert', upload.single('image'), async (request, response) => {
     await rm(file.path, { force: true }).catch(() => undefined)
   }
 })
+
+function getConverterArgs(engine, inputPath, svgPath) {
+  if (engine === 'local-trace') {
+    return [
+      localTracePath,
+      inputPath,
+      svgPath,
+      '--tolerance',
+      '1.3',
+      '--min-area',
+      '12',
+    ]
+  }
+
+  if (engine !== 'starvector-1b') {
+    throw new Error(`Unknown conversion engine: ${engine}`)
+  }
+
+  return [
+    converterPath,
+    inputPath,
+    svgPath,
+    '--max-length',
+    '8192',
+    '--num-beams',
+    '2',
+    '--temperature',
+    '1',
+  ]
+}
 
 function runPython(args) {
   return new Promise((resolve, reject) => {
